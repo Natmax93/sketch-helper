@@ -48,23 +48,39 @@ class Canvas(QtWidgets.QLabel):
 
         # All standard widgets draw themselves as bitmaps on a rectangular
         # "canvas" that forms the shape of the widget
-        pixmap = QtGui.QPixmap(600, 300)
+        pixmap = QtGui.QPixmap(1280, 720)
         pixmap.fill(Qt.white)
         self.setPixmap(pixmap)
 
+        # Dernière position de la souris
         self.last_x, self.last_y = None, None
+
+        # Couleur du stylo noir par défaut
         self.pen_color = QtGui.QColor("#000000")
 
     def set_pen_color(self, c):
+        """
+        Permet de changer la couleur du stylo.
+
+        :param self: Le canvas sur lequel on dessine.
+        :param c: La nouvelle couleur à appliquer.
+        """
         self.pen_color = QtGui.QColor(c)
 
     def mouseMoveEvent(self, e):
+        """
+        Cette fonction permet de dessiner un trait entre deux positions
+        de souris.
+        """
         if self.last_x is None:  # First event.
             self.last_x = e.x()
             self.last_y = e.y()
             return  # Ignore the first time.
 
+        # Récupérer la zone de dessin
         canvas = self.pixmap()
+
+        # Sélectionner
         painter = QtGui.QPainter(canvas)
         p = painter.pen()
         p.setWidth(4)

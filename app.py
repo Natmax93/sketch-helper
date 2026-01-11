@@ -3,8 +3,7 @@ from PySide6.QtGui import QAction, QIcon, QPixmap, QPainter, QPen, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
-    QPushButton,
-    QLabel,
+    QDockWidget,
     QToolBar,
     QStatusBar,
     QWidget,
@@ -36,8 +35,8 @@ class MainWindow(QMainWindow):
         # Changer le titre de la fenêtre
         self.setWindowTitle("Sketch Creator")
 
-        # Changer la taille minimum de la fenêtre
-        # self.setMinimumSize(QSize(1080, 720))
+        # Fixer la taille de la fenêtre
+        self.setFixedSize(QSize(1298, 853))
 
         # Layout de la fenêtre
         w = QWidget()
@@ -46,14 +45,12 @@ class MainWindow(QMainWindow):
 
         # --- ZONE DE DESSIN ---
 
-        # Dernière position de la souris
-        self.last_x, self.last_y = None, None
-
         # QLabel is the simplest widget available for displaying a QPixmap.
         self.canvas = Canvas()
         l.addWidget(self.canvas)
 
-        # --- Palette pour choisir la couleur (temporaire)
+        # --- Palette pour choisir la couleur (temporaire) ---
+
         palette = QHBoxLayout()
         self.add_palette_buttons(palette)
         l.addLayout(palette)
@@ -68,15 +65,24 @@ class MainWindow(QMainWindow):
 
         # Bouton de génération des formes
         button_action = QAction("Génération IA", self)
+        # Texte affiché dans la barre de status lorsque l'on passe
+        # la souris dessus
         button_action.setStatusTip("C'est le bouton de génération")
+        # Relier l'action au bouton
         button_action.triggered.connect(self.toolbar_button_clicked)
-        button_action.setCheckable(True)
+        # Ajout du bouton à la toolbar
         toolbar.addAction(button_action)
+
+        # --- Panneau Génération IA
+
+        ai_assistant = QDockWidget("Assistant IA")
+        self.addDockWidget(Qt.LeftDockWidgetArea, ai_assistant)
 
         # Stylo pour dessiner
         button_action2 = QAction("Stylo", self)
         button_action2.setStatusTip("C'est le stylo")
         button_action2.triggered.connect(self.toolbar_button_clicked)
+        # Le bouton a un état activé/désactivé
         button_action2.setCheckable(True)
         toolbar.addAction(button_action2)
 
@@ -105,6 +111,10 @@ class MainWindow(QMainWindow):
             b = QPaletteButton(c)
             b.pressed.connect(lambda c=c: self.canvas.set_pen_color(c))
             layout.addWidget(b)
+
+    def resizeEvent(self, event):
+        print("Taille :", event.size())
+        return super().resizeEvent(event)
 
 
 # You need one (and only one) QApplication instance per application.
