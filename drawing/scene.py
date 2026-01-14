@@ -14,109 +14,103 @@ La scène ne s'occupe PAS :
 - de la logique de l'assistant IA
 """
 
-from PySide6.QtWidgets import QGraphicsScene, QGraphicsPathItem
+from PySide6.QtWidgets import (
+    QGraphicsScene,
+    QGraphicsPathItem,
+    QGraphicsLineItem,
+    QGraphicsRectItem,
+    QGraphicsEllipseItem,
+)
 from PySide6.QtGui import QPainterPath, QPen
-from PySide6.QtCore import QRectF
+from PySide6.QtCore import QRectF, QLineF
 
 from drawing.tools import Tool
 
 
 class DrawingScene(QGraphicsScene):
     def __init__(self, logger=None):
-        """
-        Parameters
-        ----------
-        logger : EventLogger | None
-            Logger utilisé pour enregistrer les interactions utilisateur.
-        """
         super().__init__()
 
-        # Dimensions fixes de la zone de dessin (ex : A4 en pixels logiques)
         width = 1280
         height = 720
-
         self.setSceneRect(QRectF(0, 0, width, height))
 
-        # Outil actif (par défaut : sélection)
         self._tool = Tool.SELECT
-
-        # Logger HAII (peut être None si désactivé)
         self.logger = logger
 
-        # ---- État interne pour Tool.PEN ----
-
-        # Path en cours de construction (QPainterPath)
+        # ---- PEN ----
         self._current_path = None
-
-        # Item graphique correspondant au path
         self._current_item = None
-
-        # Nombre de points ajoutés au path (utile pour les logs)
         self._points_count = 0
 
-        # ---- État interne pour Tool.SELECT ----
-
-        # Item cliqué au moment du mousePress
+        # ---- SELECT ----
         self._press_item = None
-
-        # Position de la souris au mousePress
         self._press_pos = None
 
-    # ------------------------------------------------------------------
-    # Gestion de l'outil courant
-    # ------------------------------------------------------------------
+        # ---- SHAPES (LINE/RECT/ELLIPSE) ----
+        self._shape_start = None  # QPointF (scene coords)
+        self._shape_item = None  # QGraphicsItem (line/rect/ellipse)
+
+    # ----------------------------
+    # Utils
+    # ----------------------------
+    def _make_pen(self, width=2):
+        pen = QPen()
+        pen.setWidth(width)
+        return pen
+
+    def _enable_interaction_flags(self, item):
+        # sélection + déplacement via SELECT
+        item.setFlag(item.GraphicsItemFlag.ItemIsSelectable, True)
+        item.setFlag(item.GraphicsItemFlag.ItemIsMovable, True)
+
+    def _item_at_scene_pos(self, scene_pos):
+        # itemAt a besoin d'une transform de la vue
+        if not self.views():
+            return None
+        view = self.views()[0]
+        return self.itemAt(scene_pos, view.transform())
 
     def set_tool(self, tool: Tool):
-        """
-        Change l'outil actif.
-
-        Appelée depuis la toolbar (EditorWindow).
-        """
         self._tool = tool
-
         if self.logger:
             self.logger.log(event_type="tool_change", tool=tool.name)
 
     def tool(self) -> Tool:
-        """Retourne l'outil courant."""
         return self._tool
 
     # ------------------------------------------------------------------
-    # Événements souris
+    # Mouse events
     # ------------------------------------------------------------------
-
     def mousePressEvent(self, event):
-        """
-        Appelé quand l'utilisateur appuie sur un bouton de la souris.
-        """
+        p = event.scenePos()
 
-        # ---------------- Tool.PEN ----------------
+        # ---------------- ERASER ----------------
+        if self._tool == Tool.ERASER and event.button():
+            item = self._item_at_scene_pos(p)
+            if item is not None:
+                self.removeItem(item)
+                if self.logger:
+                    self.logger.log(
+                        event_type="erase",
+                        tool="ERASER",
+                        item_type=type(item).__name__,
+                    )
+                event.accept()
+                return
+            # si rien à gommer, on laisse Qt faire (ou on accept quand même)
+            super().mousePressEvent(event)
+            return
+
+        # ---------------- PEN ----------------
         if self._tool == Tool.PEN and event.button():
-            # Position de départ du trait
-            p = event.scenePos()
-
-            # Création du path
             self._current_path = QPainterPath(p)
             self._points_count = 1
 
-            # Création de l'item graphique associé
             self._current_item = QGraphicsPathItem(self._current_path)
+            self._current_item.setPen(self._make_pen(width=2))
+            self._enable_interaction_flags(self._current_item)
 
-            # Style minimal du stylo
-            pen = QPen()
-            pen.setWidth(2)
-            self._current_item.setPen(pen)
-
-            # IMPORTANT :
-            # rendre l'item sélectionnable et déplaçable pour Tool.SELECT
-            self._current_item.setFlag(
-                self._current_item.GraphicsItemFlag.ItemIsSelectable, True
-            )
-            self._current_item.setFlag(
-                self._current_item.GraphicsItemFlag.ItemIsMovable, True
-            )
-
-            # Ajout immédiat à la scène (dessin en temps réel)
             self.addItem(self._current_item)
 
             if self.logger:
@@ -125,16 +119,52 @@ class DrawingScene(QGraphicsScene):
             event.accept()
             return
 
-        # ---------------- Tool.SELECT ----------------
-        if self._tool == Tool.SELECT:
-            # Détection de l'item sous la souris (peut être None)
-            if self.views():
-                view = self.views()[0]
-                self._press_item = self.itemAt(event.scenePos(), view.transform())
-            else:
-                self._press_item = None
+        # ---------------- LINE ----------------
+        if self._tool == Tool.LINE and event.button():
+            self._shape_start = p
+            self._shape_item = QGraphicsLineItem(QLineF(p, p))
+            self._shape_item.setPen(self._make_pen(width=2))
+            self._enable_interaction_flags(self._shape_item)
+            self.addItem(self._shape_item)
 
-            self._press_pos = event.scenePos()
+            if self.logger:
+                self.logger.log(event_type="line_start", tool="LINE")
+
+            event.accept()
+            return
+
+        # ---------------- RECT ----------------
+        if self._tool == Tool.RECT and event.button():
+            self._shape_start = p
+            self._shape_item = QGraphicsRectItem(QRectF(p, p))
+            self._shape_item.setPen(self._make_pen(width=2))
+            self._enable_interaction_flags(self._shape_item)
+            self.addItem(self._shape_item)
+
+            if self.logger:
+                self.logger.log(event_type="rect_start", tool="RECT")
+
+            event.accept()
+            return
+
+        # ---------------- ELLIPSE ----------------
+        if self._tool == Tool.ELLIPSE and event.button():
+            self._shape_start = p
+            self._shape_item = QGraphicsEllipseItem(QRectF(p, p))
+            self._shape_item.setPen(self._make_pen(width=2))
+            self._enable_interaction_flags(self._shape_item)
+            self.addItem(self._shape_item)
+
+            if self.logger:
+                self.logger.log(event_type="ellipse_start", tool="ELLIPSE")
+
+            event.accept()
+            return
+
+        # ---------------- SELECT ----------------
+        if self._tool == Tool.SELECT:
+            self._press_item = self._item_at_scene_pos(p)
+            self._press_pos = p
 
             if self.logger:
                 self.logger.log(
@@ -145,24 +175,51 @@ class DrawingScene(QGraphicsScene):
                     ),
                 )
 
-        # Laisser Qt gérer le comportement standard (sélection, propagation)
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
-        """
-        Appelé quand la souris se déplace avec un bouton appuyé.
-        """
+        p = event.scenePos()
 
-        # ---------------- Tool.PEN ----------------
+        # ---------------- ERASER (gomme “continue”) ----------------
+        if self._tool == Tool.ERASER:
+            item = self._item_at_scene_pos(p)
+            if item is not None:
+                self.removeItem(item)
+                if self.logger:
+                    self.logger.log(
+                        event_type="erase",
+                        tool="ERASER",
+                        item_type=type(item).__name__,
+                        notes="move",
+                    )
+                event.accept()
+                return
+            super().mouseMoveEvent(event)
+            return
+
+        # ---------------- PEN ----------------
         if self._tool == Tool.PEN and self._current_path is not None:
-            p = event.scenePos()
-
-            # Ajoute un segment au path
             self._current_path.lineTo(p)
             self._points_count += 1
-
-            # Met à jour l'item graphique
             self._current_item.setPath(self._current_path)
+            event.accept()
+            return
+
+        # ---------------- LINE/RECT/ELLIPSE ----------------
+        if (
+            self._tool in (Tool.LINE, Tool.RECT, Tool.ELLIPSE)
+            and self._shape_start is not None
+            and self._shape_item is not None
+        ):
+            if self._tool == Tool.LINE:
+                self._shape_item.setLine(QLineF(self._shape_start, p))
+            else:
+                rect = QRectF(self._shape_start, p).normalized()
+                # rect/ellipse ont la même logique de bounding box
+                if self._tool == Tool.RECT:
+                    self._shape_item.setRect(rect)
+                else:
+                    self._shape_item.setRect(rect)
 
             event.accept()
             return
@@ -170,11 +227,9 @@ class DrawingScene(QGraphicsScene):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """
-        Appelé quand l'utilisateur relâche un bouton de la souris.
-        """
+        p = event.scenePos()
 
-        # ---------------- Tool.PEN ----------------
+        # ---------------- PEN ----------------
         if self._tool == Tool.PEN and self._current_path is not None:
             if self.logger:
                 self.logger.log(
@@ -184,7 +239,6 @@ class DrawingScene(QGraphicsScene):
                     n_points=str(self._points_count),
                 )
 
-            # Réinitialisation de l'état interne
             self._current_path = None
             self._current_item = None
             self._points_count = 0
@@ -192,10 +246,47 @@ class DrawingScene(QGraphicsScene):
             event.accept()
             return
 
-        # ---------------- Tool.SELECT ----------------
+        # ---------------- LINE/RECT/ELLIPSE ----------------
+        if (
+            self._tool in (Tool.LINE, Tool.RECT, Tool.ELLIPSE)
+            and self._shape_item is not None
+        ):
+            # log “end” avec un peu d’info utile
+            if self.logger:
+                if self._tool == Tool.LINE:
+                    line = self._shape_item.line()
+                    self.logger.log(
+                        event_type="line_end",
+                        tool="LINE",
+                        item_type="QGraphicsLineItem",
+                        notes=f"({line.x1():.1f},{line.y1():.1f})->({line.x2():.1f},{line.y2():.1f})",
+                    )
+                elif self._tool == Tool.RECT:
+                    r = self._shape_item.rect()
+                    self.logger.log(
+                        event_type="rect_end",
+                        tool="RECT",
+                        item_type="QGraphicsRectItem",
+                        notes=f"x={r.x():.1f},y={r.y():.1f},w={r.width():.1f},h={r.height():.1f}",
+                    )
+                else:
+                    r = self._shape_item.rect()
+                    self.logger.log(
+                        event_type="ellipse_end",
+                        tool="ELLIPSE",
+                        item_type="QGraphicsEllipseItem",
+                        notes=f"x={r.x():.1f},y={r.y():.1f},w={r.width():.1f},h={r.height():.1f}",
+                    )
+
+            self._shape_start = None
+            self._shape_item = None
+
+            event.accept()
+            return
+
+        # ---------------- SELECT ----------------
         if self._tool == Tool.SELECT and self._press_pos is not None:
-            # Détecte un déplacement significatif (drag)
-            delta = event.scenePos() - self._press_pos
+            delta = p - self._press_pos
             moved = abs(delta.x()) + abs(delta.y()) > 2.0
 
             if moved and self.logger:

@@ -9,7 +9,7 @@ Responsabilité :
 
 from PySide6.QtWidgets import QMainWindow, QToolBar, QGraphicsView, QDockWidget
 from PySide6.QtGui import QAction
-from PySide6.QtCore import Qt  # IMPORTANT : DockWidgetArea est ici
+from PySide6.QtCore import Qt
 
 from drawing.scene import DrawingScene
 from ui.assistant_panel import AssistantPanel
@@ -22,99 +22,51 @@ class EditorWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Éditeur - Prototype HAII")
 
-        # --- Logger ---
         self.logger = EventLogger("logs/events.csv")
 
-        # --- Scene/View ---
-        # La scène contient les items (formes) ; la vue les affiche et gère le zoom/scroll si besoin
         self.scene = DrawingScene(logger=self.logger)
         self.view = QGraphicsView(self.scene)
 
-        # Permet de sélectionner un item par clic (comportement standard)
+        # Par défaut, sélection
         self.view.setDragMode(QGraphicsView.RubberBandDrag)
 
-        # Dans un QMainWindow, le widget central est la "zone principale"
         self.setCentralWidget(self.view)
 
-        # --- Toolbar ---
         toolbar = QToolBar("Outils")
         self.addToolBar(toolbar)
 
-        # Action : mode Sélection
-        act_select = QAction("Sélection", self)
-        act_select.triggered.connect(
-            lambda: (
-                self.scene.set_tool(Tool.SELECT),
-                self.view.setDragMode(QGraphicsView.RubberBandDrag),
+        def set_tool_and_view_mode(tool: Tool):
+            self.scene.set_tool(tool)
+            self.view.setDragMode(
+                QGraphicsView.RubberBandDrag
+                if tool == Tool.SELECT
+                else QGraphicsView.NoDrag
             )
-        )
+
+        act_select = QAction("Sélection", self)
+        act_select.triggered.connect(lambda: set_tool_and_view_mode(Tool.SELECT))
         toolbar.addAction(act_select)
 
-        # Action : mode Stylo
         act_pen = QAction("Stylo", self)
-        act_pen.triggered.connect(lambda: self.scene.set_tool(Tool.PEN))
+        act_pen.triggered.connect(lambda: set_tool_and_view_mode(Tool.PEN))
         toolbar.addAction(act_pen)
 
-        # Action : mode Gomme
         act_eraser = QAction("Gomme", self)
-        act_eraser.triggered.connect(
-            lambda: (
-                self.scene.set_tool(Tool.ERASER),
-                self.view.setDragMode(QGraphicsView.NoDrag),
-            )
-        )
+        act_eraser.triggered.connect(lambda: set_tool_and_view_mode(Tool.ERASER))
         toolbar.addAction(act_eraser)
 
-        # Action : mode Trait
         act_line = QAction("Trait", self)
-        act_line.triggered.connect(
-            lambda: (
-                self.scene.set_tool(Tool.LINE),
-                self.view.setDragMode(QGraphicsView.NoDrag),
-            )
-        )
+        act_line.triggered.connect(lambda: set_tool_and_view_mode(Tool.LINE))
         toolbar.addAction(act_line)
 
-        # Action : mode Rectangle
         act_rect = QAction("Rectangle", self)
-        act_rect.triggered.connect(
-            lambda: (
-                self.scene.set_tool(Tool.RECT),
-                self.view.setDragMode(QGraphicsView.NoDrag),
-            )
-        )
+        act_rect.triggered.connect(lambda: set_tool_and_view_mode(Tool.RECT))
         toolbar.addAction(act_rect)
 
-        # Action : mode Ellipse
         act_ellipse = QAction("Ellipse", self)
-        act_ellipse.triggered.connect(
-            lambda: (
-                self.scene.set_tool(Tool.ELLIPSE),
-                self.view.setDragMode(QGraphicsView.NoDrag),
-            )
-        )
+        act_ellipse.triggered.connect(lambda: set_tool_and_view_mode(Tool.ELLIPSE))
         toolbar.addAction(act_ellipse)
 
-        # TODO ce code ne sert à rien : à effacer...
-
-        # act_select.triggered.connect(
-        #     lambda: (
-        #         self.scene.set_tool(Tool.SELECT),
-        #         self.view.setDragMode(QGraphicsView.RubberBandDrag),
-        #     )
-        # )
-
-        # act_pen.triggered.connect(
-        #     lambda: (
-        #         self.scene.set_tool(Tool.PEN),
-        #         self.view.setDragMode(QGraphicsView.NoDrag),
-        #     )
-        # )
-
-        # --- Assistant dock ---
         dock = QDockWidget("Assistant", self)
         dock.setWidget(AssistantPanel())
-
-        # Ajoute le dock à droite (ou gauche) de la fenêtre
-        # Qt.RightDockWidgetArea / Qt.LeftDockWidgetArea sont des enums
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)

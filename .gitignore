@@ -1,6 +1,6 @@
-drawing/__pycache__
-ui/__pycache__
-logs/__pycache__
+drawing/__pycache__/
+ui/__pycache__/
+logs/__pycache__/
 test.csv
 test.py
 test.ipynb
