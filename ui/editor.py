@@ -77,6 +77,28 @@ class EditorWindow(QMainWindow):
         act_ellipse.triggered.connect(lambda: set_tool_and_view_mode(Tool.ELLIPSE))
         toolbar.addAction(act_ellipse)
 
+        copy_act = QAction("Copier", self)
+        copy_act.setShortcut("Ctrl+C")
+        copy_act.triggered.connect(lambda checked=False: self.scene.copy_selection())
+        toolbar.addAction(copy_act)
+
+        cut_act = QAction("Couper", self)
+        cut_act.setShortcut("Ctrl+X")
+        cut_act.triggered.connect(lambda checked=False: self.scene.cut_selection())
+        toolbar.addAction(cut_act)
+
+        paste_act = QAction("Coller", self)
+        paste_act.setShortcut("Ctrl+V")
+        paste_act.triggered.connect(lambda checked=False: self.scene.paste())
+        toolbar.addAction(paste_act)
+
+        dup_act = QAction("Dupliquer", self)
+        dup_act.setShortcut("Ctrl+D")
+        dup_act.triggered.connect(
+            lambda checked=False: self.scene.duplicate_selection()
+        )
+        toolbar.addAction(dup_act)
+
         toolbar.addSeparator()
 
         stroke_colors = [
@@ -103,6 +125,16 @@ class EditorWindow(QMainWindow):
             toolbar.addAction(act)
 
         toolbar.addSeparator()
+
+        undo_action = self.scene.history().createUndoAction(self, "Annuler")
+        redo_action = self.scene.history().createRedoAction(self, "Rétablir")
+
+        undo_action.setShortcut("Ctrl+Z")
+        redo_action.setShortcut("Ctrl+Shift+Z")  # ou Ctrl+Y
+
+        toolbar.addSeparator()
+        toolbar.addAction(undo_action)
+        toolbar.addAction(redo_action)
 
         fill_group = QActionGroup(self)
         fill_group.setExclusive(True)
