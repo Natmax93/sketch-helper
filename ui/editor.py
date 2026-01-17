@@ -17,11 +17,12 @@ from PySide6.QtGui import QAction, QColor, QPixmap, QIcon, QActionGroup
 from PySide6.QtCore import Qt, QTimer
 
 from drawing.scene import DrawingScene
-from ui.assistant_panel import AssistantPanel
+from ui.assistant_panel import GenerationPanel
 from drawing.tools import Tool
 from logs.logger import EventLogger
 from ui.assistant_floating import FloatingAssistantButton
 from assistant.controller import AssistantController
+from assistant.generation_catalog import create_generation_item
 
 
 class EditorWindow(QMainWindow):
@@ -176,10 +177,6 @@ class EditorWindow(QMainWindow):
         act_float.setChecked(True)
         toolbar.addAction(act_float)
 
-        dock = QDockWidget("Assistant", self)
-        dock.setWidget(AssistantPanel())
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock)
-
         # Bouton assistant
 
         self.assistant_btn = FloatingAssistantButton(self.view.viewport())
@@ -204,6 +201,50 @@ class EditorWindow(QMainWindow):
 
         act_auto.toggled.connect(self.assistant_controller.set_auto_enabled)
         act_float.toggled.connect(self.assistant_controller.set_floating_visible)
+
+        # --- Panneau (Dock) de génération d'items ---
+
+        self.gen_panel = GenerationPanel()
+
+        self.gen_dock = QDockWidget("Génération IA", self)
+        self.gen_dock.setWidget(self.gen_panel)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.gen_dock)
+
+        # caché par défaut
+        self.gen_dock.hide()
+
+        # Ajouter une action toolbar "Génération IA" qui toggle le dock
+
+        act_gen = QAction("Génération IA", self)
+        act_gen.setCheckable(True)  # permet un état ON/OFF
+        act_gen.setChecked(False)
+        toolbar.addAction(act_gen)
+
+        def toggle_gen(checked: bool):
+            self.gen_dock.setVisible(checked)
+
+        act_gen.toggled.connect(toggle_gen)
+
+        def on_suggestion(category: str, item_id: str):
+            # 1) créer items
+            items = create_generation_item(category, item_id)
+
+            # 2) positionner intelligemment : proche du centre de la vue
+            center = self.view.mapToScene(self.view.viewport().rect().center())
+            for it in items:
+                it.setPos(center)
+
+                # ajouter à la scène
+                self.scene.addItem(it)
+
+            # 3) log (si tu as self.logger)
+            if hasattr(self, "logger") and self.logger:
+                prompt = self.gen_panel.get_prompt_text()
+                self.logger.log(
+                    "gen_add", tool="GEN", notes=f"{category}:{item_id}|prompt={prompt}"
+                )
+
+        self.gen_panel.suggestion_chosen.connect(on_suggestion)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
