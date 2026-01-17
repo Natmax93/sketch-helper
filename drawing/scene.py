@@ -41,6 +41,7 @@ from PySide6.QtCore import (
     QRectF,  # Rectangle flottant (coordonnées en float)
     QLineF,  # Segment flottant
     QPointF,  # Point flottant
+    Signal,
 )
 
 # Enum métier des outils (SELECT, PEN, ERASER, LINE, RECT, ELLIPSE, ...)
@@ -51,6 +52,8 @@ from drawing.commands import AddItemCommand, RemoveItemCommand, MoveItemsCommand
 
 
 class DrawingScene(QGraphicsScene):
+    item_created = Signal(object)  # émettra le QGraphicsItem créé
+
     def __init__(self, logger=None):
         """
         Parameters
@@ -299,6 +302,10 @@ class DrawingScene(QGraphicsScene):
         # Applique la position globale
         item.setPos(pos)
         return item
+
+    def _finalize_created_item(self, item):
+        """À appeler quand un item 'définitif' est créé par l'utilisateur."""
+        self.item_created.emit(item)
 
     # ---------
     # API publique (appelée par l'UI)
@@ -665,6 +672,9 @@ class DrawingScene(QGraphicsScene):
                 )
             )
 
+            # Signal pour le nouvel item créé
+            self._finalize_created_item(self._current_item)
+
             # Reset état interne
             self._current_path = None
             self._current_item = None
@@ -711,6 +721,9 @@ class DrawingScene(QGraphicsScene):
                     self, self._shape_item, text="Shape stroke", already_in_scene=True
                 )
             )
+
+            # Signal pour le nouvel item créé
+            self._finalize_created_item(self._shape_item)
 
             # Reset état interne shapes
             self._shape_start = None

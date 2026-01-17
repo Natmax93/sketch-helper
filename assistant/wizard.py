@@ -9,14 +9,29 @@ Responsabilité :
 Ici : placeholder.
 """
 
+from assistant.suggestions import CAT_EARS
+
 
 def propose_suggestion(context: dict):
     """
-    Retourne :
-      (suggestion, uncertainty, explanation)
-    ou None si abstention.
-
-    context : informations sur l'état actuel
-      ex : outil courant, nb d'objets, palette, etc.
+    Retourne un dict suggestion ou None (abstention).
+    context peut contenir:
+      - has_ellipse: bool
+      - trigger: "manual" | "auto"
     """
-    return None
+
+    if not context.get("has_ellipse", False):
+        # Abstention
+        return None
+
+    # Prototype : incertitude fixe
+    return {
+        "suggestion": CAT_EARS,
+        "uncertainty_pct": 70,  # affichage simple
+        "explanation": [
+            "Une ellipse est détectée (tête possible).",
+            "Ajout d'éléments symétriques au-dessus.",
+            "Suggestion optionnelle (à ajuster).",
+        ],
+        "what_to_do": "Appliquez si vous dessinez un chat, sinon ignorez.",
+    }

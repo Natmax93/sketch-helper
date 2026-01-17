@@ -20,6 +20,8 @@ from drawing.scene import DrawingScene
 from ui.assistant_panel import AssistantPanel
 from drawing.tools import Tool
 from logs.logger import EventLogger
+from ui.assistant_floating import FloatingAssistantButton
+from assistant.controller import AssistantController
 
 
 class EditorWindow(QMainWindow):
@@ -124,8 +126,6 @@ class EditorWindow(QMainWindow):
             stroke_group.addAction(act)
             toolbar.addAction(act)
 
-        toolbar.addSeparator()
-
         undo_action = self.scene.history().createUndoAction(self, "Annuler")
         redo_action = self.scene.history().createRedoAction(self, "Rétablir")
 
@@ -164,6 +164,45 @@ class EditorWindow(QMainWindow):
             fill_group.addAction(act)
             toolbar.addAction(act)
 
+        # Options de l'assistant
+        toolbar.addSeparator()
+
+        act_auto = QAction("Auto suggestions", self)
+        act_auto.setCheckable(True)
+        toolbar.addAction(act_auto)
+
+        act_float = QAction("Afficher assistant", self)
+        act_float.setCheckable(True)
+        act_float.setChecked(True)
+        toolbar.addAction(act_float)
+
         dock = QDockWidget("Assistant", self)
         dock.setWidget(AssistantPanel())
         self.addDockWidget(Qt.LeftDockWidgetArea, dock)
+
+        # Bouton assistant
+
+        self.assistant_btn = FloatingAssistantButton(self.view.viewport())
+        self.assistant_btn.show()
+
+        def place_btn():
+            margin = 12
+            vp = self.view.viewport()
+            self.assistant_btn.move(
+                vp.width() - self.assistant_btn.width() - margin,
+                vp.height() - self.assistant_btn.height() - margin,
+            )
+
+        self._place_assistant_btn = place_btn
+        self._place_assistant_btn()
+
+        # Contrôleur de l'assistant
+
+        self.assistant_controller = AssistantController(self, self.scene, self.logger)
+
+        act_auto.toggled.connect(self.assistant_controller.set_auto_enabled)
+        act_float.toggled.connect(self.assistant_controller.set_floating_visible)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._place_assistant_btn()
