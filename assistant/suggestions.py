@@ -13,9 +13,10 @@ from PySide6.QtCore import QPointF, Qt
 
 
 class Suggestion:
-    def __init__(self, label: str, create_fn):
+    def __init__(self, label: str, create_fn, preview_path: str | None = None):
         self.label = label
         self.create_fn = create_fn
+        self.preview_path = preview_path
 
     def create_items(self, scene):
         return self.create_fn(scene)
@@ -128,8 +129,13 @@ def make_roof_triangle_for_first_rect(scene):
 
 
 CAT_EARS = Suggestion(
-    "Ajouter des oreilles (si ellipse)", make_cat_ears_for_first_ellipse
+    label="Ajouter des oreilles",
+    create_fn=make_cat_ears_for_first_ellipse,
+    preview_path="assistant/previews/CAT_EARS.png",
 )
+
 ROOF_TRIANGLE = Suggestion(
-    "Ajouter un toit (triangle rouge)", make_roof_triangle_for_first_rect
+    label="Ajouter un toit",
+    create_fn=make_roof_triangle_for_first_rect,
+    preview_path="assistant/previews/ROOF_TRIANGLE.png",
 )

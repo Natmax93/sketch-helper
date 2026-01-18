@@ -8,8 +8,11 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QHBoxLayout,
+    QListView,
 )
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, QSize
+from PySide6.QtGui import QIcon, QPixmap
+from pathlib import Path
 
 
 class GenerationPanel(QWidget):
@@ -50,6 +53,11 @@ class GenerationPanel(QWidget):
         # Liste de suggestions (clic pour ajouter)
         layout.addWidget(QLabel("Suggestions"))
         self.list_widget = QListWidget()
+        self.list_widget.setViewMode(QListView.IconMode)
+        self.list_widget.setIconSize(QSize(64, 64))
+        self.list_widget.setResizeMode(QListView.Adjust)
+        self.list_widget.setMovement(QListView.Static)
+        self.list_widget.setSpacing(8)
         layout.addWidget(self.list_widget)
 
         # Bouton "Ajouter" (facultatif : on peut ajouter au double-clic)
@@ -61,19 +69,33 @@ class GenerationPanel(QWidget):
         # Données prototype : suggestions pré-programmées
         self._catalog = {
             "Porte": [
-                ("door_small", "Porte simple"),
-                ("door_double", "Porte double"),
-                ("door_round", "Porte arrondie"),
+                ("porte_rayure", "Porte rayée", "assistant/previews/porte_rayure.png"),
+                (
+                    "porte_arrondie",
+                    "Porte arrondie",
+                    "assistant/previews/porte_arrondie.png",
+                ),
             ],
             "Roue": [
-                ("wheel_small", "Roue petite"),
-                ("wheel_big", "Roue grande"),
-                ("wheel_spoked", "Roue avec rayons"),
+                ("jante_foncee", "Jante foncée", "assistant/previews/jante_foncee.png"),
+                ("jante_claire", "Jante claire", "assistant/previews/jante_claire.png"),
             ],
             "Carrosserie": [
-                ("body_compact", "Carrosserie compacte"),
-                ("body_sedan", "Carrosserie berline"),
-                ("body_truck", "Carrosserie camion"),
+                (
+                    "carrosserie_bleue",
+                    "Carrosserie bleue",
+                    "assistant/previews/carrosserie_bleue.png",
+                ),
+                (
+                    "carrosserie_rouge",
+                    "Carrosserie rouge",
+                    "assistant/previews/carrosserie_rouge.png",
+                ),
+                (
+                    "carrosserie_verte",
+                    "Carrosserie verte",
+                    "assistant/previews/carrosserie_verte.png",
+                ),
             ],
         }
 
@@ -88,9 +110,20 @@ class GenerationPanel(QWidget):
     def _populate_list(self, category: str):
         """Recharge la liste d'items selon la catégorie."""
         self.list_widget.clear()
-        for item_id, label in self._catalog.get(category, []):
+
+        root = Path(__file__).resolve().parents[1]  # racine projet
+
+        for item_id, label, preview_path in self._catalog.get(category, []):
             it = QListWidgetItem(label)
-            it.setData(0x0100, item_id)  # Qt.UserRole (valeur int) sans import
+            it.setData(0x0100, item_id)
+
+            if preview_path:
+                p = root / preview_path
+                if p.exists():
+                    pm = QPixmap(str(p))
+                    if not pm.isNull():
+                        it.setIcon(QIcon(pm))
+
             self.list_widget.addItem(it)
 
     def _emit_selected(self):

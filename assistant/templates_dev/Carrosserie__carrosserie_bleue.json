@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "category": "Carrosserie",
+    "item_id": "carrosserie_bleue"
+  },
+  "items": [
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#0000ff",
+      "stroke_width": 2,
+      "fill": "#0000ff",
+      "z": 0.0,
+      "rect": [
+        316.0,
+        182.0,
+        223.0,
+        115.0
+      ]
+    },
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#0000ff",
+      "stroke_width": 2,
+      "fill": "#0000ff",
+      "z": 0.0,
+      "rect": [
+        226.0,
+        235.0,
+        108.0,
+        62.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        308.0,
+        271.0,
+        53.0,
+        47.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        443.0,
+        272.0,
+        53.0,
+        46.0
+      ]
+    }
+  ]
+}

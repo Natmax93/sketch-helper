@@ -1,0 +1,76 @@
+{
+  "meta": {
+    "category": "Carrosserie",
+    "item_id": "carrosserie_verte"
+  },
+  "items": [
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#00ff00",
+      "stroke_width": 2,
+      "fill": "#00ff00",
+      "z": 0.0,
+      "rect": [
+        417.0,
+        238.0,
+        189.0,
+        101.0
+      ]
+    },
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#00ff00",
+      "stroke_width": 2,
+      "fill": "#00ff00",
+      "z": 0.0,
+      "rect": [
+        333.0,
+        284.0,
+        93.0,
+        55.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        405.0,
+        321.0,
+        45.0,
+        38.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        2.0,
+        1.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        520.0,
+        318.0,
+        46.0,
+        38.0
+      ]
+    }
+  ]
+}

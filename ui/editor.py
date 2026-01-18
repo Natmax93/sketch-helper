@@ -12,6 +12,10 @@ from PySide6.QtWidgets import (
     QToolBar,
     QGraphicsView,
     QDockWidget,
+    QToolButton,
+    QLabel,
+    QColorDialog,
+    QButtonGroup,
 )
 from PySide6.QtGui import QAction, QColor, QPixmap, QIcon, QActionGroup
 from PySide6.QtCore import Qt, QTimer
@@ -45,10 +49,36 @@ class EditorWindow(QMainWindow):
         toolbar = QToolBar("Outils")
         self.addToolBar(toolbar)
 
-        def make_color_icon(color: QColor) -> QIcon:
-            pm = QPixmap(16, 16)
-            pm.fill(color)
-            return QIcon(pm)
+        def make_swatch_button(hex_color: str, tooltip: str, on_pick):
+            """
+            Crée un bouton-couleur (QToolButton) checkable, avec rendu proche Template Builder
+            MAIS avec un style :checked (bouton enfoncé).
+            """
+            btn = QToolButton(self)
+            btn.setFixedSize(18, 18)
+            btn.setCheckable(True)
+            btn.setToolTip(tooltip)
+
+            btn.setStyleSheet(
+                f"""
+                QToolButton {{
+                    background-color: {hex_color};
+                    border: 1px solid #444;
+                    border-radius: 3px;
+                    margin: 2px;
+                }}
+                QToolButton:hover {{
+                    border: 2px solid #222;
+                }}
+                QToolButton:checked {{
+                    border: 3px solid #111;     /* effet "enfoncé" / sélection */
+                    margin: 0px;                /* compense l'épaisseur du border */
+                }}
+                """
+            )
+
+            btn.clicked.connect(on_pick)
+            return btn
 
         def set_tool_and_view_mode(tool: Tool):
             self.scene.set_tool(tool)
@@ -106,28 +136,164 @@ class EditorWindow(QMainWindow):
 
         toolbar.addSeparator()
 
-        stroke_colors = [
-            ("Noir", QColor("#000000")),
-            ("Rouge", QColor("#e53935")),
-            ("Vert", QColor("#43a047")),
-            ("Bleu", QColor("#1e88e5")),
-            ("Violet", QColor("#8e24aa")),
-            ("Orange", QColor("#fb8c00")),
+        # Palette rapide : noir, rouge, bleu, vert, gris
+        quick_palette = [
+            "#000000",  # noir
+            "#FF0000",  # rouge
+            "#0000FF",  # bleu
+            "#00FF00",  # vert
+            "#808080",  # gris
         ]
 
-        stroke_group = QActionGroup(self)
+        toolbar.addWidget(QLabel("Contour:", self))
+
+        stroke_group = QButtonGroup(self)
         stroke_group.setExclusive(True)
 
-        for i, (name, c) in enumerate(stroke_colors):
-            act = QAction(make_color_icon(c), name, self)
-            act.setCheckable(True)
-            if i == 0:
-                act.setChecked(True)  # noir par défaut
-            act.triggered.connect(
-                lambda checked=False, col=c: self.scene.set_stroke_color(col)
+        # --- 4 swatches ---
+        for hx in quick_palette:
+            btn = make_swatch_button(
+                hx,
+                f"Contour {hx}",
+                lambda checked=False, h=hx: self.scene.set_stroke_color(QColor(h)),
             )
-            stroke_group.addAction(act)
-            toolbar.addAction(act)
+            stroke_group.addButton(btn)
+            toolbar.addWidget(btn)
+
+        # --- Bouton "..." (couleur custom) ---
+        btn_more_stroke = QToolButton(self)
+        btn_more_stroke.setText("…")
+        btn_more_stroke.setFixedSize(22, 18)
+        btn_more_stroke.setCheckable(True)
+        btn_more_stroke.setToolTip("Choisir une couleur de contour")
+
+        # Style cohérent + état checked visible
+        btn_more_stroke.setStyleSheet(
+            """
+            QToolButton { border: 1px solid #444; border-radius: 3px; margin: 1px; padding: 0px 4px; }
+            QToolButton:hover { border: 2px solid #222; }
+            QToolButton:checked { border: 3px solid #111; margin: 0px; }
+            """
+        )
+
+        def choose_custom_stroke():
+            c = QColorDialog.getColor(
+                self.scene.stroke_color(), parent=self, title="Couleur du contour"
+            )
+            if c.isValid():
+                self.scene.set_stroke_color(c)
+
+                # Teinter le bouton de la couleur actuellement sélectionnée
+                btn_more_stroke.setStyleSheet(
+                    f"""
+                    QToolButton {{
+                        background-color: {c.name()};
+                        border: 1px solid #444;
+                        border-radius: 3px;
+                        margin: 1px;
+                        padding: 0px 4px;
+                    }}
+                    QToolButton:hover {{ border: 2px solid #222; }}
+                    QToolButton:checked {{ border: 3px solid #111; margin: 0px; }}
+                    """
+                )
+
+                # Indique visuellement "custom" : le bouton … devient sélectionné
+                btn_more_stroke.setChecked(True)
+
+        btn_more_stroke.clicked.connect(lambda checked=False: choose_custom_stroke())
+        stroke_group.addButton(btn_more_stroke)
+        toolbar.addWidget(btn_more_stroke)
+
+        # Valeur par défaut : noir sélectionné
+        # (On coche le premier bouton ajouté : le noir)
+        stroke_buttons = stroke_group.buttons()
+        if stroke_buttons:
+            stroke_buttons[0].setChecked(True)
+            self.scene.set_stroke_color(QColor(quick_palette[0]))
+
+        toolbar.addSeparator()
+        toolbar.addWidget(QLabel("Remplissage:", self))
+
+        fill_group = QButtonGroup(self)
+        fill_group.setExclusive(True)
+
+        # --- Bouton "Aucun" (pas de fill) ---
+        btn_no_fill = QToolButton(self)
+        btn_no_fill.setText("Aucun")
+        btn_no_fill.setCheckable(True)
+        btn_no_fill.setToolTip("Pas de remplissage")
+        btn_no_fill.setStyleSheet(
+            """
+            QToolButton { border: 1px solid #444; border-radius: 3px; margin: 1px; padding: 0px 6px; }
+            QToolButton:hover { border: 2px solid #222; }
+            QToolButton:checked { border: 3px solid #111; margin: 0px; }
+            """
+        )
+        btn_no_fill.clicked.connect(
+            lambda checked=False: self.scene.set_fill_color(None)
+        )
+        fill_group.addButton(btn_no_fill)
+        toolbar.addWidget(btn_no_fill)
+
+        # --- 4 swatches ---
+        for hx in quick_palette:
+            btn = make_swatch_button(
+                hx,
+                f"Remplissage {hx}",
+                lambda checked=False, h=hx: self.scene.set_fill_color(QColor(h)),
+            )
+            fill_group.addButton(btn)
+            toolbar.addWidget(btn)
+
+        # --- Bouton "..." (fill custom) ---
+        btn_more_fill = QToolButton(self)
+        btn_more_fill.setText("…")
+        btn_more_fill.setFixedSize(22, 18)
+        btn_more_fill.setCheckable(True)
+        btn_more_fill.setToolTip("Choisir une couleur de remplissage")
+        btn_more_fill.setStyleSheet(
+            """
+            QToolButton { border: 1px solid #444; border-radius: 3px; margin: 1px; padding: 0px 4px; }
+            QToolButton:hover { border: 2px solid #222; }
+            QToolButton:checked { border: 3px solid #111; margin: 0px; }
+            """
+        )
+
+        def choose_custom_fill():
+            current = self.scene.fill_color()
+            c = QColorDialog.getColor(
+                current if current else QColor("#ffffff"),
+                parent=self,
+                title="Couleur du remplissage",
+            )
+            if c.isValid():
+                self.scene.set_fill_color(c)
+
+                # Teinter le bouton de la couleur actuellement sélectionnée
+                btn_more_fill.setStyleSheet(
+                    f"""
+                    QToolButton {{
+                        background-color: {c.name()};
+                        border: 1px solid #444;
+                        border-radius: 3px;
+                        margin: 1px;
+                        padding: 0px 4px;
+                    }}
+                    QToolButton:hover {{ border: 2px solid #222; }}
+                    QToolButton:checked {{ border: 3px solid #111; margin: 0px; }}
+                    """
+                )
+
+                btn_more_fill.setChecked(True)
+
+        btn_more_fill.clicked.connect(lambda checked=False: choose_custom_fill())
+        fill_group.addButton(btn_more_fill)
+        toolbar.addWidget(btn_more_fill)
+
+        # Valeur par défaut : "Aucun" sélectionné
+        btn_no_fill.setChecked(True)
+        self.scene.set_fill_color(None)
 
         undo_action = self.scene.history().createUndoAction(self, "Annuler")
         redo_action = self.scene.history().createRedoAction(self, "Rétablir")
@@ -138,34 +304,6 @@ class EditorWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(undo_action)
         toolbar.addAction(redo_action)
-
-        fill_group = QActionGroup(self)
-        fill_group.setExclusive(True)
-
-        # Action “Aucun”
-        act_fill_none = QAction("Fill: aucun", self)
-        act_fill_none.setCheckable(True)
-        act_fill_none.setChecked(True)  # fill None par défaut
-        act_fill_none.triggered.connect(lambda: self.scene.set_fill_color(None))
-        fill_group.addAction(act_fill_none)
-        toolbar.addAction(act_fill_none)
-
-        fill_colors = [
-            ("Fill rouge", QColor("#ffcdd2")),
-            ("Fill vert", QColor("#c8e6c9")),
-            ("Fill bleu", QColor("#bbdefb")),
-            ("Fill jaune", QColor("#fff9c4")),
-            ("Fill gris", QColor("#eeeeee")),
-        ]
-
-        for name, c in fill_colors:
-            act = QAction(make_color_icon(c), name, self)
-            act.setCheckable(True)
-            act.triggered.connect(
-                lambda checked=False, col=c: self.scene.set_fill_color(col)
-            )
-            fill_group.addAction(act)
-            toolbar.addAction(act)
 
         # Options de l'assistant
         toolbar.addSeparator()
@@ -210,7 +348,7 @@ class EditorWindow(QMainWindow):
 
         self.gen_dock = QDockWidget("Génération IA", self)
         self.gen_dock.setWidget(self.gen_panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.gen_dock)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.gen_dock)
 
         # caché par défaut
         self.gen_dock.hide()
@@ -239,7 +377,6 @@ class EditorWindow(QMainWindow):
 
             for it in items:
                 it.setPos(center)
-                self.scene.addItem(it)
 
                 # ajouter à la scène
                 self.scene.addItem(it)

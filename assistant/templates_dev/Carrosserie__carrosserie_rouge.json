@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "category": "Carrosserie",
+    "item_id": "carrosserie_rouge"
+  },
+  "items": [
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ff0000",
+      "stroke_width": 2,
+      "fill": "#ff0000",
+      "z": 0.0,
+      "ellipse": [
+        88.0,
+        208.0,
+        240.0,
+        74.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ff0000",
+      "stroke_width": 2,
+      "fill": "#ff0000",
+      "z": 0.0,
+      "ellipse": [
+        245.0,
+        134.0,
+        342.0,
+        177.0
+      ]
+    },
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "rect": [
+        81.0,
+        245.0,
+        511.0,
+        67.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        253.0,
+        221.0,
+        70.0,
+        61.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#ffffff",
+      "stroke_width": 2,
+      "fill": "#ffffff",
+      "z": 0.0,
+      "ellipse": [
+        470.0,
+        217.0,
+        64.0,
+        48.0
+      ]
+    }
+  ]
+}

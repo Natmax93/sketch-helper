@@ -1,6 +1,8 @@
 import time
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGraphicsEllipseItem, QGraphicsRectItem
+from PySide6.QtGui import QPixmap
+from pathlib import Path
 
 from assistant import wizard
 from ui.suggestion_dialog import SuggestionDialog
@@ -30,6 +32,9 @@ class AssistantController:
 
         # Trigger manuel : clic sur l'icône flottante
         self.editor.assistant_btn.clicked.connect(self.on_manual_invoke)
+
+        # Prévisualisation des suggestions
+        self._ghost_items = []
 
     def set_auto_enabled(self, enabled: bool):
         self.auto_enabled = enabled
@@ -111,11 +116,28 @@ class AssistantController:
                 "ai_output", tool="ASSISTANT", notes=f"shown:{trigger}:{sid}"
             )
 
+        # Nettoie un éventuel ghost précédent
+        self._clear_ghost()
+
+        # Crée les items proposés
+        ghost = proposal["suggestion"].create_items(self.scene)
+
+        # Ajoute temporairement en "grisé"
+        for it in ghost:
+            it.setOpacity(0.35)
+            it.setEnabled(False)
+            it.setFlag(it.GraphicsItemFlag.ItemIsSelectable, False)
+            it.setFlag(it.GraphicsItemFlag.ItemIsMovable, False)
+            self.scene.addItem(it)
+
+        self._ghost_items = ghost
+
         dlg = SuggestionDialog(
             title=proposal["suggestion"].label,
             uncertainty_pct=proposal["uncertainty_pct"],
             explanation=proposal["explanation"],
             what_to_do=proposal["what_to_do"],
+            preview_pixmap=self._load_preview_pixmap(proposal["suggestion"]),
         )
         dlg.exec()
 
@@ -146,22 +168,50 @@ class AssistantController:
             return
 
         if choice == "accept":
-            items = proposal["suggestion"].create_items(self.scene)
+            # On "valide" : enlève le ghosting et rend undoable
+            self.scene.undo_stack.beginMacro(
+                f"Assistant: {proposal.get('suggestion_id','suggestion')}"
+            )
 
-            self.scene.undo_stack.beginMacro("Assistant apply")
-            for it in items:
-                self.scene.addItem(it)
+            for it in self._ghost_items:
+                it.setOpacity(1.0)
+                it.setEnabled(True)
+                it.setFlag(it.GraphicsItemFlag.ItemIsSelectable, True)
+                it.setFlag(it.GraphicsItemFlag.ItemIsMovable, True)
+
+                # already_in_scene=True car déjà visible (ghost)
                 self.scene.undo_stack.push(
                     AddItemCommand(
-                        self.scene, it, text="Assistant item", already_in_scene=True
+                        self.scene,
+                        it,
+                        text="Assistant suggestion",
+                        already_in_scene=True,
                     )
                 )
+
             self.scene.undo_stack.endMacro()
 
-            if self.logger:
-                sid = proposal.get("suggestion_id", "unknown")
-                self.logger.log(
-                    "assistant_apply",
-                    tool="ASSISTANT",
-                    notes=f"{sid}:n_items={len(items)}:ms={decision_ms}",
-                )
+            self._ghost_items = []
+
+        else:
+            # ignore / override / cancel => on retire les items
+            self._clear_ghost()
+
+    def _load_preview_pixmap(self, suggestion):
+        path = getattr(suggestion, "preview_path", None)
+        if not path:
+            return None
+
+        # Chemin relatif projet -> absolu
+        root = Path(__file__).resolve().parents[1]
+        abs_path = root / path
+        if not abs_path.exists():
+            return None
+        pm = QPixmap(str(abs_path))
+        return pm if not pm.isNull() else None
+
+    def _clear_ghost(self):
+        for it in self._ghost_items:
+            if it.scene() is not None:
+                self.scene.removeItem(it)
+        self._ghost_items = []

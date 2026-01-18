@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "category": "Porte",
+    "item_id": "porte_arrondie"
+  },
+  "items": [
+    {
+      "type": "QGraphicsRectItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#000000",
+      "stroke_width": 2,
+      "fill": "#a52a2a",
+      "z": 0.0,
+      "rect": [
+        551.0,
+        242.0,
+        93.0,
+        178.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#a52a2a",
+      "stroke_width": 2,
+      "fill": "#a52a2a",
+      "z": 0.0,
+      "ellipse": [
+        551.0,
+        204.0,
+        93.0,
+        94.0
+      ]
+    },
+    {
+      "type": "QGraphicsLineItem",
+      "pos": [
+        0.0,
+        0.0
+      ],
+      "stroke": "#000000",
+      "stroke_width": 2,
+      "fill": "none",
+      "z": 0.0,
+      "line": [
+        598.0,
+        204.0,
+        598.0,
+        418.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        -3.0,
+        0.0
+      ],
+      "stroke": "#000000",
+      "stroke_width": 2,
+      "fill": "#000000",
+      "z": 0.0,
+      "ellipse": [
+        584.0,
+        323.0,
+        8.0,
+        13.0
+      ]
+    },
+    {
+      "type": "QGraphicsEllipseItem",
+      "pos": [
+        1.0,
+        -2.0
+      ],
+      "stroke": "#000000",
+      "stroke_width": 2,
+      "fill": "#000000",
+      "z": 0.0,
+      "ellipse": [
+        606.0,
+        325.0,
+        8.0,
+        13.0
+      ]
+    }
+  ]
+}
