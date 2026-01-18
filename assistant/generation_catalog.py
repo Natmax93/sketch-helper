@@ -39,6 +39,7 @@ def _load_templates_dev():
             cat = meta.get("category")
             iid = meta.get("item_id")
             items = payload.get("items", [])
+            items = sorted(items, key=lambda d: float(d.get("z", 0.0)))
             if cat and iid and isinstance(items, list):
                 _TEMPLATE_CACHE[(cat, iid)] = payload
         except Exception:

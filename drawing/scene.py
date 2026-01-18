@@ -262,7 +262,9 @@ class DrawingScene(QGraphicsScene):
         Copie la sélection dans le clipboard sous forme JSON.
         (On choisit du texte JSON pour rester simple et portable.)
         """
-        items = self.selectedItems()
+        selected = set(self.selectedItems())
+        ordered = self.items(Qt.SortOrder.AscendingOrder)  # bas -> haut
+        items = [it for it in ordered if it in selected]
 
         # Sérialise uniquement les types supportés (les None sont filtrés)
         payload = [self._serialize_item(it) for it in items]
@@ -308,6 +310,7 @@ class DrawingScene(QGraphicsScene):
         try:
             data = json.loads(txt)
             items_data = data.get("items", [])
+            items_data = sorted(items_data, key=lambda d: float(d.get("z", 0.0)))
         except Exception:
             # Clipboard non compatible / pas du JSON attendu
             return
@@ -341,33 +344,38 @@ class DrawingScene(QGraphicsScene):
             )
 
     def duplicate_selection(self):
-        """
-        Dupliquer = recréer une copie des items sélectionnés, avec un petit offset,
-        sans passer par le clipboard OS.
-        """
-        items = self.selectedItems()
-        payload = [self._serialize_item(it) for it in items]
+        selected = set(self.selectedItems())
+        if not selected:
+            return
+
+        ordered = self.items(Qt.SortOrder.AscendingOrder)  # bas -> haut
+        items_to_dup = [it for it in ordered if it in selected]
+
+        payload = [self._serialize_item(it) for it in items_to_dup]
         payload = [p for p in payload if p is not None]
         if not payload:
             return
 
+        self.undo_stack.beginMacro("Duplicate selection")
+
+        new_items = []
         for d in payload:
             it = self._deserialize_item(d)
             if it is None:
                 continue
 
-            # Décale la copie pour la distinguer visuellement
             it.moveBy(10, 10)
-
             self.addItem(it)
             self.undo_stack.push(
                 AddItemCommand(self, it, text="Duplicate item", already_in_scene=True)
             )
+            new_items.append(it)
 
-        if self.logger:
-            self.logger.log(
-                event_type="duplicate", tool=self._tool.name, notes=f"n={len(payload)}"
-            )
+        self.undo_stack.endMacro()
+
+        self.clearSelection()
+        for it in new_items:
+            it.setSelected(True)
 
     # ------------------------------------------------------------------
     # Mouse events (interaction directe)

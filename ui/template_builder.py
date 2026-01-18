@@ -12,10 +12,12 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 from PySide6.QtGui import QAction, QColor
+from PySide6.QtCore import QPointF, Qt
 
 from drawing.scene import DrawingScene
 from drawing.tools import Tool
-from drawing.serialization import serialize_item
+from drawing.serialization import serialize_item, deserialize_item
+from drawing.commands import AddItemCommand
 
 
 class TemplateBuilderWindow(QMainWindow):
@@ -77,6 +79,14 @@ class TemplateBuilderWindow(QMainWindow):
         act_redo = QAction("Rétablir", self)
         act_redo.triggered.connect(self.scene.undo_stack.redo)
         tb.addAction(act_redo)
+
+        tb.addSeparator()
+
+        act_duplicate = QAction("Dupliquer", self)
+        act_duplicate.setToolTip("Dupliquer la sélection")
+        act_duplicate.triggered.connect(self._duplicate_selection)
+        act_duplicate.setShortcut("Ctrl+D")
+        tb.addAction(act_duplicate)
 
         tb.addSeparator()
 
@@ -145,6 +155,52 @@ class TemplateBuilderWindow(QMainWindow):
         act_export_all.triggered.connect(lambda: self._export(selection_only=False))
         tb.addAction(act_export_all)
 
+    def _duplicate_selection(self):
+        """
+        Duplique les items sélectionnés :
+        - sérialisation -> désérialisation
+        - léger décalage
+        - undo/redo supporté
+        """
+        selected = set(self.scene.selectedItems())
+        if not selected:
+            return
+
+        # Ordre bas -> haut (pour préserver l'empilement)
+        ordered = self.scene.items(Qt.SortOrder.AscendingOrder)
+        items_to_dup = [it for it in ordered if it in selected]
+
+        OFFSET = QPointF(20, 20)
+
+        self.scene.undo_stack.beginMacro("Duplicate items")
+        new_items = []
+
+        for it in items_to_dup:
+            data = serialize_item(it)
+            if data is None:
+                continue
+            new_it = deserialize_item(data)
+            if new_it is None:
+                continue
+
+            # Décalage visuel
+            new_it.setPos(it.pos() + OFFSET)
+
+            self.scene.addItem(new_it)
+            self.scene.undo_stack.push(
+                AddItemCommand(
+                    self.scene, new_it, text="Duplicate item", already_in_scene=True
+                )
+            )
+            new_items.append(new_it)
+
+        self.scene.undo_stack.endMacro()
+
+        # UX : sélectionner les nouveaux items
+        self.scene.clearSelection()
+        for it in new_items:
+            it.setSelected(True)
+
     def _make_color_swatch(self, hex_color: str, on_click):
         """
         Crée un petit bouton couleur (pastille) inséré dans une toolbar.
@@ -180,7 +236,18 @@ class TemplateBuilderWindow(QMainWindow):
             self.scene.set_fill_color(c)
 
     def _export(self, selection_only: bool):
-        items = self.scene.selectedItems() if selection_only else self.scene.items()
+        if selection_only:
+            selected = set(self.scene.selectedItems())
+            if not selected:
+                QMessageBox.information(self, "Export", "Aucun item sélectionné.")
+                return
+            # Ordre bas -> haut, filtré par sélection
+            ordered = self.scene.items(Qt.SortOrder.AscendingOrder)
+            items = [it for it in ordered if it in selected]
+        else:
+            # Ordre bas -> haut
+            items = self.scene.items(Qt.SortOrder.AscendingOrder)
+
         if not items:
             QMessageBox.information(self, "Export", "Aucun item à exporter.")
             return

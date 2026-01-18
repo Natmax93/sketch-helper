@@ -66,6 +66,7 @@ def serialize_item(item) -> Optional[Dict[str, Any]]:
         "stroke": stroke,
         "stroke_width": int(width),
         "fill": fill,
+        "z": float(item.zValue()),
     }
 
     if isinstance(item, QGraphicsLineItem):
@@ -166,6 +167,7 @@ def deserialize_item(data: Dict[str, Any]):
     if item is None:
         return None
 
+    item.setZValue(float(data.get("z", 0.0)))  # Conservation des Z-values
     enable_interaction_flags(item)
     item.setPos(pos_pt)
     return item
