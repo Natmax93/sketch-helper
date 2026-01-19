@@ -7,7 +7,7 @@ Responsabilité :
 - afficher un panneau assistant sous forme de DockWidget
 """
 
-import random
+from pathlib import Path
 import time
 
 from PySide6.QtWidgets import (
@@ -643,41 +643,54 @@ class TaskWindow(QWidget):
 
 
 def make_task_pixmap(task_id: str, size: int = 220) -> QPixmap:
-    """Modèle simple généré en code (pas besoin de fichiers images)."""
-    pm = QPixmap(size, size)
-    pm.fill(Qt.white)
+    """
+    Charge un PNG de référence pour la tâche et le met au bon format d'affichage.
 
-    p = QPainter(pm)
-    pen = QPen(Qt.black)
-    pen.setWidth(3)
-    p.setPen(pen)
+    - task_id: "cat" | "castle" | "car"
+    - size: taille (carrée) cible d'affichage dans la TaskWindow
+    """
+    mapping = {
+        "cat": "cat_model.png",
+        "castle": "castle_model.png",
+        "car": "car_model.png",
+    }
 
-    if task_id == "cat":
-        # tête + oreilles (très schématique)
-        p.drawEllipse(60, 70, 100, 90)
-        p.drawLine(75, 80, 95, 40)
-        p.drawLine(95, 40, 115, 80)
-        p.drawLine(125, 80, 145, 40)
-        p.drawLine(145, 40, 165, 80)
-    elif task_id == "castle":
-        # base + 2 tours
-        p.drawRect(50, 90, 120, 90)
-        p.drawRect(35, 70, 35, 110)
-        p.drawRect(150, 70, 35, 110)
-        # créneaux
-        for x in range(55, 160, 20):
-            p.drawRect(x, 75, 10, 15)
-    elif task_id == "car":
-        # carrosserie + roues
-        p.drawRect(50, 110, 120, 50)
-        p.drawLine(70, 110, 100, 85)
-        p.drawLine(100, 85, 140, 85)
-        p.drawLine(140, 85, 160, 110)
-        p.drawEllipse(70, 150, 25, 25)
-        p.drawEllipse(140, 150, 25, 25)
+    filename = mapping.get(task_id)
+    if not filename:
+        # fallback : pixmap vide
+        pm = QPixmap(size, size)
+        pm.fill(Qt.white)
+        return pm
 
-    p.end()
-    return pm
+    # Chemin de l'image
+    img_path = f"assets/tasks/{filename}"
+
+    pm = QPixmap(str(img_path))
+    if pm.isNull():
+        # Fallback si le PNG n'est pas trouvé/chargeable
+        fallback = QPixmap(size, size)
+        fallback.fill(Qt.white)
+        painter = QPainter(fallback)
+        painter.setPen(QPen(Qt.black))
+        painter.drawText(
+            fallback.rect(), Qt.AlignCenter, f"Image introuvable:\n{img_path}"
+        )
+        painter.end()
+        return fallback
+
+    # Redimensionnement : conserve le ratio et évite l'effet “pixellisé”
+    pm = pm.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+    # Option : placer sur fond blanc (utile si PNG transparent)
+    out = QPixmap(size, size)
+    out.fill(Qt.white)
+    painter = QPainter(out)
+    x = (size - pm.width()) // 2
+    y = (size - pm.height()) // 2
+    painter.drawPixmap(x, y, pm)
+    painter.end()
+
+    return out
 
 
 class ConditionDialog(QDialog):
