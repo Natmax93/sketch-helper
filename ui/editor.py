@@ -24,6 +24,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QDialog,
     QHBoxLayout,
+    QSlider,
+    QDialogButtonBox,
 )
 from PySide6.QtGui import QAction, QColor, QPainter, QPen, QPixmap
 from PySide6.QtCore import Qt, QTimer, Signal
@@ -525,6 +527,7 @@ class EditorWindow(QMainWindow):
             return
 
         task_id, label = self._tasks[self._trial_index]
+        self._current_task_label = label
 
         # Contexte logger pour tagger tous les events fins
         self.logger.set_context(task_id=task_id, trial_index=self._trial_index + 1)
@@ -555,6 +558,18 @@ class EditorWindow(QMainWindow):
         # Logs haut niveau
         self.logger.log("done_clicked")
         self.logger.log("trial_end", notes=f"duration_s={duration_s:.3f}")
+
+        # --- Mesure subjective ---
+        # On demande juste après la fin perçue de la tâche.
+        dlg = SelfEvalDialog(getattr(self, "_current_task_label", ""), parent=self)
+        dlg.exec()
+        score = dlg.get_score()
+
+        if score is None:
+            # l'utilisateur a annulé : on log quand même pour tracer l'absence
+            self.logger.log("self_eval_missing", tool="TEST", notes="cancelled")
+        else:
+            self.logger.log("self_eval", tool="TEST", notes=f"similarity={score:.3f}")
 
         # Préparer essai suivant
         self._trial_started_at = None
@@ -724,3 +739,53 @@ class ConditionDialog(QDialog):
     def _choose(self, condition: str):
         self.selected_condition = condition
         self.accept()
+
+
+class SelfEvalDialog(QDialog):
+    """
+    Auto-évaluation simple : similarité perçue au modèle.
+    Retourne un score float dans [0, 1] si validé, sinon None.
+    """
+
+    def __init__(self, task_label: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Auto-évaluation")
+        self.setModal(True)
+
+        self._value = 50  # défaut : milieu
+        self._task_label = task_label
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel(f"Similarité perçue — {task_label}", self))
+        layout.addWidget(
+            QLabel(
+                "À quel point votre dessin ressemble au modèle ? (0 = pas du tout, 100 = identique)",
+                self,
+            )
+        )
+
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.setRange(0, 100)
+        self.slider.setValue(self._value)
+        self.slider.valueChanged.connect(self._on_change)
+        layout.addWidget(self.slider)
+
+        self.value_label = QLabel(f"Score : {self._value}/100", self)
+        self.value_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.value_label)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=self
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_change(self, v: int):
+        self._value = v
+        self.value_label.setText(f"Score : {v}/100")
+
+    def get_score(self):
+        if self.result() != QDialog.Accepted:
+            return None
+        return self._value / 100.0
