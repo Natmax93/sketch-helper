@@ -329,6 +329,9 @@ class EditorWindow(QMainWindow):
         undo_action = self.scene.history().createUndoAction(self, "Annuler")
         redo_action = self.scene.history().createRedoAction(self, "Rétablir")
 
+        undo_action.triggered.connect(lambda checked=False: self._log_undo())
+        redo_action.triggered.connect(lambda checked=False: self._log_redo())
+
         undo_action.setShortcut("Ctrl+Z")
         redo_action.setShortcut("Ctrl+Shift+Z")  # ou Ctrl+Y
 
@@ -630,6 +633,20 @@ class EditorWindow(QMainWindow):
             self.act_auto.setEnabled(True)
             self.act_float.setEnabled(True)
             self.assistant_btn.setEnabled(True)
+
+    def _log_undo(self):
+        if self.logger:
+            self.logger.log(
+                "undo",
+                tool="HISTORY",
+            )
+
+    def _log_redo(self):
+        if self.logger:
+            self.logger.log(
+                "redo",
+                tool="HISTORY",
+            )
 
 
 class TaskWindow(QWidget):

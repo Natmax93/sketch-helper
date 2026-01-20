@@ -158,6 +158,16 @@ class AssistantController:
             return
         self._try_suggest(trigger="auto", created_item=item)
 
+    def _log_suggest_event(
+        self, event_type: str, trigger: str, sid: str, decision_ms: int | None = None
+    ):
+        if not self.logger:
+            return
+        extra = f";ms={decision_ms}" if decision_ms is not None else ""
+        self.logger.log(
+            event_type, tool="ASSISTANT", notes=f"trigger={trigger};sid={sid}{extra}"
+        )
+
     # ---------------------------------------------------------------------
     # Flux principal de suggestion
     # ---------------------------------------------------------------------
@@ -202,9 +212,10 @@ class AssistantController:
         # ---------------------------------------------------------------
         if self.logger:
             sid = proposal.get("suggestion_id", "unknown")
-            self.logger.log(
-                "ai_output", tool="ASSISTANT", notes=f"shown:{trigger}:{sid}"
-            )
+
+            # Uniquement pour l’auto
+            if trigger == "auto":
+                self._log_suggest_event("autosuggest_shown", trigger=trigger, sid=sid)
 
         # Important : si un ghost précédent traîne, on le retire
         self._clear_ghost()
@@ -257,6 +268,38 @@ class AssistantController:
                     tool="ASSISTANT",
                     notes=f"{choice}:{trigger}:{sid}:ms={decision_ms}",
                 )
+
+                if choice == "accept":
+                    if trigger == "auto":
+                        self._log_suggest_event(
+                            "autosuggest_accept",
+                            trigger=trigger,
+                            sid=sid,
+                            decision_ms=decision_ms,
+                        )
+                    else:
+                        self._log_suggest_event(
+                            "assistant_accept",
+                            trigger=trigger,
+                            sid=sid,
+                            decision_ms=decision_ms,
+                        )
+                else:
+                    # On regroupe ignore / override / cancel comme "reject" pour l’analyse
+                    if trigger == "auto":
+                        self._log_suggest_event(
+                            "autosuggest_reject",
+                            trigger=trigger,
+                            sid=sid,
+                            decision_ms=decision_ms,
+                        )
+                    else:
+                        self._log_suggest_event(
+                            "assistant_reject",
+                            trigger=trigger,
+                            sid=sid,
+                            decision_ms=decision_ms,
+                        )
 
             # -----------------------------------------------------------
             # Si l'utilisateur accepte -> commit (items deviennent "réels")
